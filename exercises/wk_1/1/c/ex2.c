@@ -1,34 +1,51 @@
 #include <pthread.h>
 #include <stdio.h>
+#include <time.h>
 
 int i = 0;
-void *printPoem(void *poem) {
-    char (*array)[50][255] = poem;
-    for (int j = 0; j < i; j++) {
-        printf("%s", (*array)[j]); 
+int pos = 0;
+
+void *printFile(void *poem) {
+    struct timespec tim;
+    tim.tv_sec = 0;
+    tim.tv_nsec = 500000000L;
+    char (*lineArray)[50][255] = poem;
+    for (pos = 0; pos < i; pos++) {
+        printf("%d: %s", pos, (*lineArray)[pos]); 
+        nanosleep(&tim, NULL);
     }
-    pthread_exit(NULL);
+    return NULL;
+}
+
+void *fuckWithPos(void *poem) {
+    struct timespec tim;
+    tim.tv_sec = 0;
+    tim.tv_nsec = 100000000L;
+    char (*lineArray)[50][255] = poem;
+    for (pos = 0; pos < i; pos++) {
+        nanosleep(&tim, NULL);
+    }
+    return NULL;
 }
 
 int main() {
    FILE *fp;
-   char poem[50][255];
+   char file[50][255];
 
    fp = fopen("caged_bird.txt", "r");
-   while(fgets(poem[i], sizeof(poem[i]), fp)) {
+   while(fgets(file[i], sizeof(file[i]), fp)) {
        i++;
    }
    if (feof(fp)) {
-       //(sizeof poem / sizeof *poem)
        pthread_t threads[2];
-       int p1 = pthread_create(&threads[0], NULL, printPoem, (void*)poem);
-       int p2 = pthread_create(&threads[0], NULL, printPoem, (void*)poem);
-       printPoem(poem);
+       int p1 = pthread_create(&threads[0], NULL, printFile, (void*)file);
+       int p2 = pthread_create(&threads[1], NULL, fuckWithPos, (void*)file);
+       pthread_join(threads[0], NULL);
+       pthread_join(threads[1], NULL);
    }
    else {
        // Error
        printf("HELP! Some bad shit went down.");
    }
    fclose(fp);
-   pthread_exit(NULL);
 }

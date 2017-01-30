@@ -7,6 +7,8 @@
 #IncludeRegexTransform: 
 
 /home/rob/370/exercises/wk_1/1/c/ex2.c
+pthread.h
+-
 stdio.h
 -
 
