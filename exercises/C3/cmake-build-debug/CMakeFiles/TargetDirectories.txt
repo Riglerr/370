@@ -1,0 +1,3 @@
+/home/rob/370/exercises/C3/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/rob/370/exercises/C3/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/rob/370/exercises/C3/cmake-build-debug/CMakeFiles/C3.dir
