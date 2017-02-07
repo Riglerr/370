@@ -1,120 +1,95 @@
 #include <stdio.h>
 #include <pthread.h>
 
-typedef enum {FULL, NOT_FULL} BuffState;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t writeCondition = PTHREAD_COND_INITIALIZER;
+pthread_cond_t readCondition = PTHREAD_COND_INITIALIZER;
 
-typedef struct AppState {
-    pthread_mutex_t *mutex;
-    pthread_cond_t *buffFullCond;
-    pthread_cond_t *buffFreeCond;
-    unsigned int buffLength;
-    char buff[10][50];
-    BuffState bufferState;
-    unsigned int linesInFile;
-    unsigned int writePos;
-    unsigned int readPos;
-} AppState;
+typedef enum {NO_SPACE, AVAIL_SPACE} BuffState;
+typedef struct BufferMatrix {
+    char data[10][50];
+    int length;
+    int width;
+    BuffState status;
+} BufferMatrix;
 
-void *printFile(pthread_mutex_t *mutex) {
+//void printBufferStatus(AppState *state) {
+//    int i = 0,j = 0, k = 0;
+//    printf("\n");
+//    for(i; i < state->buffLength; i++) {
+//        if (i == state->writePos && state->writePos == state->readPos) {
+//            printf("%s\n", "R ");
+//            printf("%s", "W ");
+//        }
+//        else if (i == state->readPos) {
+//            printf("%s", "R ");
+//        }
+//        else if(i == state->writePos) {
+//            printf("%s", "W ");
+//        }
+//        else {
+//            printf("%s", "  ");
+//        }
+//    }
+//    printf("\n");
+//    for(j; j < state->buffLength; j++) {
+//        if (j == state->buffLength -1) {
+//            printf("%s", "|");
+//        }
+//        else {
+//            printf("%s", "|_");
+//        }
+//    }
+//    printf("\n");
+//    for(k; k < state->buffLength; k++) {
+//        printf("%d%s", k, " ");
+//    }
+//}
 
-}
-
-void * incPos() {
-
-}
-
-
-int readLine(AppState* state, FILE* fp) {
-    fgets(state->buff[state->linesInFile], sizeof(state->buff[state->linesInFile]), fp);
-    state->linesInFile++;
-
-    return 0;
-}
-
-void *readFile(void* arg) {
+void *writeDataToBuffer(void *arg) {
+    BufferMatrix *buffer;
     FILE *fp;
-    AppState *state = (AppState *)arg;
-    fp = fopen("/home/rob/370/exercises/C3/caged_bird.txt", "r");
-
-    if (feof(fp)) {
-        pthread_exit(NULL);
-    }
-    if (state->writePos == 0 && state->readPos == 0) {
-        readLine(state, fp);
-        state->writePos++;
-    }
-    if (state->writePos == state->buffLength) {
-        readLine(state, fp);
-        state->writePos = 0;
-    }
-    else if (state->writePos < state->readPos) {
-        readLine(state, fp);
-    }
-    else if (state->writePos > state->readPos) {
-
-    }
+    buffer = (BufferMatrix*)arg;
+    fp = fopen("caged_bird.txt", "r");
 
     while(!feof(fp)) {
-        // Request Lock
-        pthread_mutex_lock(state->mutex);
+        // Wait while buffer has not bean read;
+        pthread_mutex_lock(&mutex);
+        if (buffer->status == NO_SPACE);
+            pthread_cond_wait(&writeCondition, &mutex);
+        pthread_mutex_unlock(&mutex);
 
-        // Wait if buff is full
-        if(state->bufferState == FULL)
-            pthread_cond_wait(state->buffFreeCond, state->mutex);
-
-        pthread_mutex_unlock(state->mutex);
+        // Overwrite buffer
+        int i = 0; // Control var for buff
+        while (fgets(buffer->data[i], sizeof(buffer->data[i]), fp) && i < buffer->length) {
+            i++;
+        }
+        // Signal consumer;
+        pthread_mutex_lock(&mutex);
+        buffer->status = NO_SPACE;
+        pthread_cond_signal(&readCondition);
+        pthread_mutex_lock(&mutex);
     }
-    fclose(fp);
+//    pthread_mutex_lock(&mutex);
+//    buffer->status = W_FINISH;
+//    pthread_mutex_lock(&mutex);
     pthread_exit(NULL);
     return NULL;
 }
 
-void printBufferStatus(AppState *state) {
-    int i = 0,j = 0, k = 0;
-    printf("\n");
-    for(i; i < state->buffLength; i++) {
-        if (i == state->readPos) {
-            printf("%s", "R ");
-        }
-        else if(i == state->writePos) {
-            printf("%s", "W ");
-        }
-        else {
-            printf("%s", "  ");
-        }
-    }
-    printf("\n");
-    for(j; j < state->buffLength; j++) {
-        if (j == state->buffLength -1) {
-            printf("%s", "|");
-        }
-        else {
-            printf("%s", "|_");
-        }
-    }
-    printf("\n");
-    for(k; k < state->buffLength; k++) {
-        printf("%d%s", k, " ");
-    }
+void *readDataFromBuffer(void* arg) {
+    BufferMatrix *buffer = (BufferMatrix*)arg;
+
+    while(buffer->status != W_FINISH)
 }
 
 int main() {
-    // Init Types
-    pthread_t menuThread, fileThread, printThread, incThread;
-    AppState state;
-    AppState *ptr = &state;
-    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_t writeThread, readThread;
+    void *exitStatus;
 
-    // Init Data
-    state.mutex = &mutex;
-    state.linesInFile = 0;
-    state.buffLength = 10;
-    state.bufferState = NOT_FULL;
-    state.readPos = 0;
-    state.writePos = 0;
-
-    // Start Threads
-    pthread_create(&fileThread, NULL, readFile, ptr);
-    pthread_join(fileThread, NULL);
+    pthread_create(&writeThread, NULL, writeDataToBuffer, NULL);
+    pthread_create(&readThread, NULL, readDataFromBuffer, NULL);
+    pthread_join(writeThread, &exitStatus);
+    pthread_join(readThread, &exitStatus);
     return 0;
 }

@@ -22,7 +22,7 @@ typedef struct input {
     int len;
     int dataIndex;
     int chunks;
-
+}
 input;
 typedef struct received {
     char data[1024];
@@ -46,9 +46,6 @@ char keypress;
 // the function needs to cast the void parameter to the required type before
 // it can make use of it.
 // note, threads can only take a single parameter, so if more is needed, a compound type must be used.
-
-
-
 
 void * producer ( void * arg ) {
     // this variable stores the return of the mutex locking and unlocking procedure
