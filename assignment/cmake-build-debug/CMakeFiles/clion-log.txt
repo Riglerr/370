@@ -1,17 +1,4 @@
-"C:\Program Files (x86)\JetBrains\CLion 2016.3.2\bin\cmake\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - MinGW Makefiles" C:\Users\Rob\370\assignment
--- The CXX compiler identification is unknown
-CMake Error at CMakeLists.txt:2 (project):
-  The CMAKE_CXX_COMPILER:
-
-    g++.exe
-
-  is not a full path and was not found in the PATH.
-
-  Tell CMake where to find the compiler by setting either the environment
-  variable "CXX" or the CMake cache entry CMAKE_CXX_COMPILER to the full path
-  to the compiler, or to the compiler name if it is in the PATH.
-
-
--- Configuring incomplete, errors occurred!
-See also "C:/Users/Rob/370/assignment/cmake-build-debug/CMakeFiles/CMakeOutput.log".
-See also "C:/Users/Rob/370/assignment/cmake-build-debug/CMakeFiles/CMakeError.log".
+/usr/local/clion-2016.3.2/bin/cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/rob/370/assignment
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/rob/370/assignment/cmake-build-debug
