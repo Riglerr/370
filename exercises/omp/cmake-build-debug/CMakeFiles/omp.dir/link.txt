@@ -1,0 +1,1 @@
+/usr/bin/c++    -fopenmp -g   CMakeFiles/omp.dir/main.cpp.o  -o omp 

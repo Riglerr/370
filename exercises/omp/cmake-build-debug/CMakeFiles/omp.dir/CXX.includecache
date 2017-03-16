@@ -6,15 +6,11 @@
 
 #IncludeRegexTransform: 
 
-/home/rob/370/assignment/p.c
-stdio.h
+/home/rob/370/exercises/omp/main.cpp
+omp.h
+/home/rob/370/exercises/omp/omp.h
+iostream
 -
-pthread.h
--
-stdlib.h
--
-time.h
--
-string.h
+cmath
 -
 

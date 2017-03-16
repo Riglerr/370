@@ -1,0 +1,11 @@
+/usr/local/clion-2016.3.2/bin/cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/rob/370/exercises/omp
+-- Try OpenMP C flag = [-fopenmp]
+-- Performing Test OpenMP_FLAG_DETECTED
+-- Performing Test OpenMP_FLAG_DETECTED - Success
+-- Try OpenMP CXX flag = [-fopenmp]
+-- Performing Test OpenMP_FLAG_DETECTED
+-- Performing Test OpenMP_FLAG_DETECTED - Success
+-- Found OpenMP: -fopenmp  
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/rob/370/exercises/omp/cmake-build-debug

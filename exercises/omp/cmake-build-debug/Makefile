@@ -48,10 +48,10 @@ RM = /usr/local/clion-2016.3.2/bin/cmake/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/rob/370/assignment
+CMAKE_SOURCE_DIR = /home/rob/370/exercises/omp
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/rob/370/assignment/cmake-build-debug
+CMAKE_BINARY_DIR = /home/rob/370/exercises/omp/cmake-build-debug
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rob/370/assignment/cmake-build-debug/CMakeFiles /home/rob/370/assignment/cmake-build-debug/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/rob/370/exercises/omp/cmake-build-debug/CMakeFiles /home/rob/370/exercises/omp/cmake-build-debug/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/rob/370/assignment/cmake-build-debug/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/rob/370/exercises/omp/cmake-build-debug/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -111,44 +111,44 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named assignment
+# Target rules for targets named omp
 
 # Build rule for target.
-assignment: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 assignment
-.PHONY : assignment
+omp: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 omp
+.PHONY : omp
 
 # fast build rule for target.
-assignment/fast:
-	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/build
-.PHONY : assignment/fast
+omp/fast:
+	$(MAKE) -f CMakeFiles/omp.dir/build.make CMakeFiles/omp.dir/build
+.PHONY : omp/fast
 
-p.o: p.c.o
+main.o: main.cpp.o
 
-.PHONY : p.o
+.PHONY : main.o
 
 # target to build an object file
-p.c.o:
-	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/p.c.o
-.PHONY : p.c.o
+main.cpp.o:
+	$(MAKE) -f CMakeFiles/omp.dir/build.make CMakeFiles/omp.dir/main.cpp.o
+.PHONY : main.cpp.o
 
-p.i: p.c.i
+main.i: main.cpp.i
 
-.PHONY : p.i
+.PHONY : main.i
 
 # target to preprocess a source file
-p.c.i:
-	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/p.c.i
-.PHONY : p.c.i
+main.cpp.i:
+	$(MAKE) -f CMakeFiles/omp.dir/build.make CMakeFiles/omp.dir/main.cpp.i
+.PHONY : main.cpp.i
 
-p.s: p.c.s
+main.s: main.cpp.s
 
-.PHONY : p.s
+.PHONY : main.s
 
 # target to generate assembly for a file
-p.c.s:
-	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/p.c.s
-.PHONY : p.c.s
+main.cpp.s:
+	$(MAKE) -f CMakeFiles/omp.dir/build.make CMakeFiles/omp.dir/main.cpp.s
+.PHONY : main.cpp.s
 
 # Help Target
 help:
@@ -158,10 +158,10 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... assignment"
-	@echo "... p.o"
-	@echo "... p.i"
-	@echo "... p.s"
+	@echo "... omp"
+	@echo "... main.o"
+	@echo "... main.i"
+	@echo "... main.s"
 .PHONY : help
 
 
