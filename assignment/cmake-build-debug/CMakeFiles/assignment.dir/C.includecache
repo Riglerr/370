@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/rob/370/assignment/main.c
+/home/rob/370/assignment/tmp.c
 stdio.h
 -
 pthread.h
