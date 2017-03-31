@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="BookmarkManager">
-    <bookmark url="file://$PROJECT_DIR$/main.c" line="10" />
+    <bookmark url="file://$PROJECT_DIR$/main.c" line="11" />
   </component>
   <component name="CMakeRunConfigurationManager" shouldGenerate="true" buildAllGenerated="true">
     <generated>
@@ -45,37 +45,43 @@
       <file leaf-file-name="main.c" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="612">
-              <caret line="440" column="17" lean-forward="true" selection-start-line="440" selection-start-column="17" selection-end-line="440" selection-end-column="17" />
+            <state relative-caret-position="1348">
+              <caret line="917" column="0" lean-forward="true" selection-start-line="917" selection-start-column="0" selection-end-line="917" selection-end-column="0" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
-                <element signature="e#196#272#0" expanded="false" />
-                <element signature="e#295#385#0" expanded="false" />
-                <element signature="e#411#488#0" expanded="false" />
-                <element signature="e#513#700#0" expanded="false" />
-                <element signature="e#723#873#0" expanded="false" />
-                <element signature="e#905#958#0" expanded="false" />
-                <element signature="e#977#1528#0" expanded="false" />
-                <element signature="e#1550#1623#0" expanded="false" />
-                <element signature="e#2435#2495#0" expanded="false" />
-                <element signature="e#2435#2752#0" expanded="false" />
-                <element signature="e#2754#4615#0" expanded="false" />
-                <element signature="e#4618#4919#0" expanded="false" />
-                <element signature="e#4921#6196#0" expanded="false" />
-                <element signature="e#6198#8921#0" expanded="false" />
-                <element signature="e#8923#9672#0" expanded="false" />
-                <element signature="e#9674#12556#0" expanded="false" />
-                <element signature="e#14990#16831#0" expanded="false" />
-                <element signature="e#16833#18852#0" expanded="false" />
-                <element signature="e#18854#19138#0" expanded="false" />
-                <element signature="e#19140#19410#0" expanded="false" />
-                <element signature="e#20824#21004#0" expanded="false" />
-                <element signature="e#20824#21186#0" expanded="false" />
-                <element signature="e#22107#22557#0" expanded="false" />
-                <element signature="e#22559#23108#0" expanded="false" />
-                <element signature="e#23110#24705#0" expanded="false" />
-                <element signature="e#24707#24883#0" expanded="false" />
-                <element signature="e#24884#25780#0" expanded="false" />
+                <element signature="e#296#372#0" expanded="false" />
+                <element signature="e#496#573#0" expanded="false" />
+                <element signature="e#598#646#0" expanded="false" />
+                <element signature="e#674#868#0" expanded="false" />
+                <element signature="e#1163#1313#0" expanded="false" />
+                <element signature="e#1345#1398#0" expanded="false" />
+                <element signature="e#1417#2004#0" expanded="false" />
+                <element signature="e#2026#2099#0" expanded="false" />
+                <element signature="e#3185#3512#0" expanded="false" />
+                <element signature="e#3514#5375#0" expanded="false" />
+                <element signature="e#5377#5678#0" expanded="false" />
+                <element signature="e#5680#6957#0" expanded="false" />
+                <element signature="e#6959#9721#0" expanded="false" />
+                <element signature="e#9723#10424#0" expanded="false" />
+                <element signature="e#10426#12412#0" expanded="false" />
+                <element signature="e#12414#12781#0" expanded="false" />
+                <element signature="e#12783#14021#0" expanded="false" />
+                <element signature="e#14023#15754#0" expanded="false" />
+                <element signature="e#15756#17531#0" expanded="false" />
+                <element signature="e#17533#19319#0" expanded="false" />
+                <element signature="e#19321#20497#0" expanded="false" />
+                <element signature="e#20499#20874#0" expanded="false" />
+                <element signature="e#20876#21128#0" expanded="false" />
+                <element signature="e#21130#21400#0" expanded="false" />
+                <element signature="e#21402#22812#0" expanded="false" />
+                <element signature="e#22814#22994#0" expanded="false" />
+                <element signature="e#22814#23176#0" expanded="false" />
+                <element signature="e#23178#23516#0" expanded="false" />
+                <element signature="e#23178#24774#0" expanded="false" />
+                <element signature="e#25146#25188#0" expanded="false" />
+                <element signature="e#27735#27911#0" expanded="false" />
+                <element signature="e#27913#28809#0" expanded="false" />
+                <element signature="e#28811#29113#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -91,6 +97,9 @@
       <find>*p = scenario-&gt;wheels[0]</find>
       <find>solutionSetup</find>
       <find>read_cond</find>
+      <find>vector_condition</find>
+      <find>wheelCycle_barrier</find>
+      <find>solutionSetup_barrier</find>
     </findStrings>
   </component>
   <component name="IdeDocumentHistory">
@@ -374,11 +383,15 @@
       <workItem from="1490891836001" duration="1643000" />
       <workItem from="1490894496999" duration="714000" />
       <workItem from="1490913330030" duration="5822000" />
+      <workItem from="1490952958968" duration="1434000" />
+      <workItem from="1490954847538" duration="5544000" />
+      <workItem from="1490970005014" duration="15614000" />
+      <workItem from="1490986089219" duration="73000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="238801000" />
+    <option name="totallyTimeSpent" value="261466000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -395,15 +408,15 @@
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.1740625" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.36956522" sideWeight="0.49875" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.47763976" sideWeight="0.49875" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="CMake" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.24099378" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32981366" sideWeight="0.5" order="8" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.42670807" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.38944098" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4248447" sideWeight="0.50125" order="11" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.36459628" sideWeight="0.50125" order="11" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -444,36 +457,41 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/main.c</url>
-          <line>166</line>
-          <option name="timeStamp" value="299" />
+          <line>508</line>
+          <option name="timeStamp" value="383" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/main.c</url>
-          <line>651</line>
-          <option name="timeStamp" value="333" />
+          <line>759</line>
+          <option name="timeStamp" value="390" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/main.c</url>
-          <line>606</line>
-          <option name="timeStamp" value="340" />
+          <line>296</line>
+          <option name="timeStamp" value="392" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/main.c</url>
-          <line>608</line>
-          <option name="timeStamp" value="341" />
+          <line>452</line>
+          <option name="timeStamp" value="404" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/main.c</url>
+          <line>308</line>
+          <option name="timeStamp" value="406" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/main.c</url>
+          <line>904</line>
+          <option name="timeStamp" value="408" />
         </line-breakpoint>
       </breakpoints>
       <breakpoints-dialog>
         <breakpoints-dialog />
       </breakpoints-dialog>
-      <option name="time" value="345" />
+      <option name="time" value="409" />
     </breakpoint-manager>
-    <watches-manager>
-      <configuration name="CMakeRunConfiguration">
-        <watch expression="scenario-&gt;multiReset" />
-        <watch expression="scenario-&gt;state == MULTI" />
-      </configuration>
-    </watches-manager>
+    <watches-manager />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/main.c">
@@ -814,37 +832,43 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/main.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="612">
-          <caret line="440" column="17" lean-forward="true" selection-start-line="440" selection-start-column="17" selection-end-line="440" selection-end-column="17" />
+        <state relative-caret-position="1348">
+          <caret line="917" column="0" lean-forward="true" selection-start-line="917" selection-start-column="0" selection-end-line="917" selection-end-column="0" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
-            <element signature="e#196#272#0" expanded="false" />
-            <element signature="e#295#385#0" expanded="false" />
-            <element signature="e#411#488#0" expanded="false" />
-            <element signature="e#513#700#0" expanded="false" />
-            <element signature="e#723#873#0" expanded="false" />
-            <element signature="e#905#958#0" expanded="false" />
-            <element signature="e#977#1528#0" expanded="false" />
-            <element signature="e#1550#1623#0" expanded="false" />
-            <element signature="e#2435#2495#0" expanded="false" />
-            <element signature="e#2435#2752#0" expanded="false" />
-            <element signature="e#2754#4615#0" expanded="false" />
-            <element signature="e#4618#4919#0" expanded="false" />
-            <element signature="e#4921#6196#0" expanded="false" />
-            <element signature="e#6198#8921#0" expanded="false" />
-            <element signature="e#8923#9672#0" expanded="false" />
-            <element signature="e#9674#12556#0" expanded="false" />
-            <element signature="e#14990#16831#0" expanded="false" />
-            <element signature="e#16833#18852#0" expanded="false" />
-            <element signature="e#18854#19138#0" expanded="false" />
-            <element signature="e#19140#19410#0" expanded="false" />
-            <element signature="e#20824#21004#0" expanded="false" />
-            <element signature="e#20824#21186#0" expanded="false" />
-            <element signature="e#22107#22557#0" expanded="false" />
-            <element signature="e#22559#23108#0" expanded="false" />
-            <element signature="e#23110#24705#0" expanded="false" />
-            <element signature="e#24707#24883#0" expanded="false" />
-            <element signature="e#24884#25780#0" expanded="false" />
+            <element signature="e#296#372#0" expanded="false" />
+            <element signature="e#496#573#0" expanded="false" />
+            <element signature="e#598#646#0" expanded="false" />
+            <element signature="e#674#868#0" expanded="false" />
+            <element signature="e#1163#1313#0" expanded="false" />
+            <element signature="e#1345#1398#0" expanded="false" />
+            <element signature="e#1417#2004#0" expanded="false" />
+            <element signature="e#2026#2099#0" expanded="false" />
+            <element signature="e#3185#3512#0" expanded="false" />
+            <element signature="e#3514#5375#0" expanded="false" />
+            <element signature="e#5377#5678#0" expanded="false" />
+            <element signature="e#5680#6957#0" expanded="false" />
+            <element signature="e#6959#9721#0" expanded="false" />
+            <element signature="e#9723#10424#0" expanded="false" />
+            <element signature="e#10426#12412#0" expanded="false" />
+            <element signature="e#12414#12781#0" expanded="false" />
+            <element signature="e#12783#14021#0" expanded="false" />
+            <element signature="e#14023#15754#0" expanded="false" />
+            <element signature="e#15756#17531#0" expanded="false" />
+            <element signature="e#17533#19319#0" expanded="false" />
+            <element signature="e#19321#20497#0" expanded="false" />
+            <element signature="e#20499#20874#0" expanded="false" />
+            <element signature="e#20876#21128#0" expanded="false" />
+            <element signature="e#21130#21400#0" expanded="false" />
+            <element signature="e#21402#22812#0" expanded="false" />
+            <element signature="e#22814#22994#0" expanded="false" />
+            <element signature="e#22814#23176#0" expanded="false" />
+            <element signature="e#23178#23516#0" expanded="false" />
+            <element signature="e#23178#24774#0" expanded="false" />
+            <element signature="e#25146#25188#0" expanded="false" />
+            <element signature="e#27735#27911#0" expanded="false" />
+            <element signature="e#27913#28809#0" expanded="false" />
+            <element signature="e#28811#29113#0" expanded="false" />
           </folding>
         </state>
       </provider>

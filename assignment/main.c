@@ -4,9 +4,13 @@
 #include <string.h>
 #include <errno.h>
 
-#define NUM_WHEELS 6
+#define NUM_WHEELS 2
 #define MIN_PROBLEMS_PER_SCENARIO 5
-#define MIN_VECTOR_DISTANCE 2
+#define PROBLEM_RETRY_ATTEMPTS 3
+#define MIN_VECTOR_DISTANCE 1
+#define FAILURE_PROBABILITY 90
+#define BUFF_H 4
+#define BUFF_W 256
 
 typedef enum wheel_state {
     WORKING,
@@ -19,7 +23,6 @@ typedef enum scenario_state {
     VECTORING,
     PROBLEM,
     SETUP,
-    TERMINATE,
     COMPLETE
 } scenario_state;
 
@@ -31,15 +34,33 @@ typedef enum scenario_type {
     FFA
 } scenario_type;
 
+typedef enum scenario_outcome {
+    PASSED,
+    FAILED
+} scenario_outcome;
+
 typedef struct log_queue_t {
     pthread_mutex_t lock;
     int size;
     char data[10][255];
-    int head, tail;
+    int head, tail, close;
     char *fileName;
     pthread_cond_t write_cond;
     pthread_cond_t read_cond;
 } log_queue_t;
+
+typedef struct shared_buffer {
+    pthread_mutex_t lock;
+    pthread_cond_t
+            new_data_cond,
+            new_space_cond;
+    char c[BUFF_H][BUFF_W];
+    int next_in,
+            next_out,
+            count;
+    int close;
+    char *fileName;
+} shared_buffer_t;
 
 typedef struct problem_conditions_t {
     pthread_cond_t sinking_condition;
@@ -57,14 +78,15 @@ typedef struct scenario_t {
     scenario_state state;
     scenario_type type;
     pthread_mutex_t mutex;
-    pthread_cond_t vector_condition;
+    pthread_cond_t continue_condition;
     pthread_cond_t problem_condition;
     pthread_cond_t scenarioComplete_condition;
     problem_conditions_t conditions;
     pthread_barrier_t wheelSetup_barrier;
     pthread_barrier_t solutionSetup_barrier;
     pthread_barrier_t wheelCycle_barrier;
-    log_queue_t log;
+    shared_buffer_t log;
+    scenario_outcome outcome;
     int currentCycleProblems;
     int solvedProblemCount;
     double totalDistanceVectored;
@@ -90,21 +112,26 @@ void *wheel_start(void *args);
 void *sinkProblemHandler(void * args);
 void *freeWheelProblemHandler(void * args);
 void *blockProblemHandler(void * args);
-void *vectorMonitor(void * args);
+void *scenarioMonitor(void *p_scenario);
 wheel_state randomizeSingleState(wheel_state secondaryState);
 wheel_state randomizeStateForScenario(scenario_t *scenario);
 
-log_queue_t log_init(scenario_type scType);
+shared_buffer_t log_init(scenario_type scType);
 void log_destroy(log_queue_t *log);
 void *log_consume(void *args);
-void log_print(log_queue_t *log, char *string);
+void *log_print(shared_buffer_t *sb, char string[]);
 char* generateFileName(scenario_type scType);
+char *getLogNameForProblemType(wheel_state pType);
+int trySolveProblem(scenario_t *scenario, wheel_t * wheel, wheel_state pType);
+
+int processWheelState(wheel_t *wheel, scenario_t *scenario);
+void waitForContinueSignal(wheel_t *wheel, scenario_t *scenario);
 
 /*
  * main
  * Shows menu, handles input & starts scenarios*/
 int main() {
-    srand(time(NULL));
+    srand((unsigned)time(NULL));
     pthread_t menuThread;
 
     // Kick off menu thread
@@ -174,7 +201,6 @@ void *menuLoop() {
     pthread_exit(0);
 }
 
-
 void *scenario_create(void *args) {
     scenario_type scType = (scenario_type)args;
 
@@ -215,10 +241,10 @@ scenario_t scenario_init(scenario_type scType) {
     // Init pthread vars
     pthread_mutex_init(&scenario.mutex, NULL);
     pthread_cond_init(&scenario.problem_condition, NULL);
-    pthread_cond_init(&scenario.vector_condition, NULL);
+    pthread_cond_init(&scenario.continue_condition, NULL);
     pthread_cond_init(&scenario.scenarioComplete_condition, NULL);
     pthread_barrier_init(&scenario.wheelSetup_barrier, NULL, NUM_WHEELS);
-    pthread_barrier_init(&scenario.solutionSetup_barrier, NULL, 5);
+    pthread_barrier_init(&scenario.solutionSetup_barrier, NULL, 4);
     pthread_barrier_init(&scenario.wheelCycle_barrier, NULL, NUM_WHEELS + 1);
     pthread_cond_init(&scenario.conditions.sinking_condition, NULL);
     pthread_cond_init(&scenario.conditions.freeWheeling_condition, NULL);
@@ -234,13 +260,15 @@ int scenario_run(scenario_t *scenario) {
     pthread_t vMT; // Vector Monitor Thread
 
     printf("Starting File Logger\n");
-    pthread_create(&fLoggerThread, NULL, log_consume, (void *)scenario);
-
+    pthread_create(&fLoggerThread, NULL, log_consume, (void *)&scenario->log);
     printf("Logging to: %s\n", scenario->log.fileName);
+
     log_print(&scenario->log, "Starting Solution Threads\n");
     pthread_create(&sinkT, NULL, sinkProblemHandler, (void *)scenario);
     pthread_create(&freeT, NULL, freeWheelProblemHandler, (void *)scenario);
     pthread_create(&blockT, NULL, blockProblemHandler, (void *)scenario);
+
+    // Wait for solution handlers to be ready.
     pthread_barrier_wait(&scenario->solutionSetup_barrier);
 
     pthread_mutex_lock(&scenario->mutex);
@@ -249,7 +277,7 @@ int scenario_run(scenario_t *scenario) {
 
     // Start VectorMonitor (Updates total distance travelled)
     log_print(&scenario->log, "Starting VectorMonitor\n");
-    pthread_create(&vMT, NULL, vectorMonitor, (void *)scenario);
+    pthread_create(&vMT, NULL, scenarioMonitor, (void *)scenario);
 
     // Start wheel threads
     pthread_t wheelThreads[NUM_WHEELS];
@@ -264,7 +292,7 @@ int scenario_run(scenario_t *scenario) {
     // This could also be achieved by doing a pthread_join() on each wheel thread?
 
     pthread_mutex_lock(&scenario->mutex);
-    while(scenario->state != TERMINATE && scenario->state != COMPLETE) {
+    while(scenario->state != COMPLETE) {
         pthread_cond_wait(&scenario->scenarioComplete_condition, &scenario->mutex);
         pthread_mutex_unlock(&scenario->mutex);
     }
@@ -275,23 +303,24 @@ int scenario_run(scenario_t *scenario) {
     // Ensure all threads are destroyed before exiting this scenario.
     // Signal the problem handler threads once more
     // This allows them to exit gracefully.
-    //printf("Destroying Problem Handlers..\n");
     pthread_cond_signal(&scenario->conditions.blocked_condition);
     pthread_cond_signal(&scenario->conditions.sinking_condition);
     pthread_cond_signal(&scenario->conditions.freeWheeling_condition);
+    scenario->log.close = 1;
+    pthread_cond_signal(&scenario->log.new_data_cond);
+    printf("Attemping to close threads\n");
+    printf("Waiting for sinker to end\n");
     pthread_join(sinkT, NULL);
+    printf("Waiting for blockH to end\n");
     pthread_join(blockT, NULL);
+
+    printf("Waiting for freeH to end\n");
     pthread_join(freeT, NULL);
-    //printf("Problem Handlers successfully Destroyed\n");
-
-    //printf("Waiting For File Logger to finish ...\n");
+    printf("Waiting for logger to end\n");
     pthread_join(fLoggerThread, NULL);
-    //printf("File Logger sucessfully closed\n");
 
-    //printf("Waiting for VectorMonitor ro finish...\n");
+    printf("Waiting for scenMon to end\n");
     pthread_join(vMT, NULL);
-    //printf("VectorMonitor successfully closed.\n");
-
     return 0;
 }
 
@@ -300,7 +329,7 @@ void scenario_destroy(scenario_t *scenario) {
     // Free pthread structs
     pthread_mutex_destroy(&scenario->mutex);
     pthread_cond_destroy(&scenario->problem_condition);
-    pthread_cond_destroy(&scenario->vector_condition);
+    pthread_cond_destroy(&scenario->continue_condition);
     pthread_cond_destroy(&scenario->scenarioComplete_condition);
     pthread_cond_destroy(&scenario->conditions.sinking_condition);
     pthread_cond_destroy(&scenario->conditions.freeWheeling_condition);
@@ -309,9 +338,6 @@ void scenario_destroy(scenario_t *scenario) {
     pthread_barrier_destroy(&scenario->solutionSetup_barrier);
     pthread_barrier_destroy(&scenario->wheelCycle_barrier);
 
-    // Free Log
-    log_destroy(&scenario->log);
-
     return;
 }
 
@@ -319,83 +345,104 @@ void *wheel_start(void *args) {
     scenario_wheel_t *threadData = (scenario_wheel_t *)args;
     scenario_t *scenario = threadData->scenario;
     wheel_t *wheel = threadData->wheel;
-    log_queue_t *log = &scenario->log;
+    shared_buffer_t *log = &scenario->log;
     struct timespec ts;
     ts.tv_nsec = 0;
     ts.tv_sec = 1;
     char msg[255];
+    // Synchronize first wheel run.
     pthread_barrier_wait(&scenario->wheelSetup_barrier);
-    while(scenario->state != TERMINATE) {
-        // Check if the scenario is complete.. make sure mutex is locke beforehand
+    while(1) {
         pthread_mutex_lock(&scenario->mutex);
-        if (isScenarioComplete(scenario) == 1) {
-            pthread_mutex_unlock(&scenario->mutex);
-            pthread_exit(0);
-        }
-
-        if (scenario->type != MULTI)
-            wheel->state = randomizeStateForScenario(scenario);
+        wheel->state = randomizeStateForScenario(scenario);
 
         // Block while another problem is being solved.
-        while (scenario->state == PROBLEM) {
-            sprintf(msg, "Wheel %d: Waiting for problems to be solved...\n", wheel->id);
-            log_print(log, msg);
-            pthread_cond_wait(&scenario->vector_condition, &scenario->mutex);
-        }
+        waitForContinueSignal(wheel, scenario);
 
-        switch(wheel->state) {
-            case WORKING:
-                sprintf(msg, "Wheel %d: Vectoring...\n", wheel->id);
-                log_print(log, msg);
-                break;
-            case SINKING:
-                sprintf(msg, "Wheel %d: Sinking...\n", wheel->id);
-                log_print(log, msg);
-                scenario->currentCycleProblems +=1;
-                scenario->state = PROBLEM;
+        if (isScenarioComplete(scenario) == 0) { // Exit thread if complete.
+            // Vector or Signal problem.
+            processWheelState(wheel, scenario);
 
-                // Add wheel index to problem queue
-                pthread_cond_signal(&scenario->conditions.sinking_condition);
-                break;
-            case BLOCKED:
-                sprintf(msg, "Wheel %d: Blocked...\n", wheel->id);
+            while (wheel->state != WORKING && scenario->state != VECTORING && scenario->state != COMPLETE) {
+                sprintf(msg, "Wheel %d: waiting for my problems to be solved\n", wheel->id);
                 log_print(log, msg);
-                scenario->currentCycleProblems += 1;
-                scenario->state = PROBLEM;
-
-                // Add wheel index to problem queue
-                pthread_cond_signal(&scenario->conditions.blocked_condition);
-                break;
-            case FREEWHEELING:
-                sprintf(msg, "Wheel %d: FreeWheeling...\n", wheel->id);
+                pthread_cond_wait(&scenario->continue_condition, &scenario->mutex);
+                sprintf(msg, "Wheel %d: My Problem was solved\n", wheel->id);
                 log_print(log, msg);
-                scenario->currentCycleProblems +=1;
-                scenario->state = PROBLEM;
-
-                // Add wheel index to problem queue
-                pthread_cond_signal(&scenario->conditions.freeWheeling_condition);
-                break;
-        }
-        if (wheel->state != WORKING) {
-            while (wheel->state != WORKING && scenario->state != VECTORING) {
-                pthread_cond_wait(&scenario->vector_condition, &scenario->mutex);
             }
         }
         pthread_mutex_unlock(&scenario->mutex);
+        sprintf(msg, "Wheel %d: Waiting At Barrier\n", wheel->id);
+        log_print(log, msg);
         pthread_barrier_wait(&scenario->wheelCycle_barrier);
+        if (isScenarioComplete(scenario)) { // Exit thread if complete.
+            sprintf(msg, "Wheel %d: Breaking", wheel->id);
+            log_print(log, msg);
+            //pthread_mutex_unlock(&scenario->mutex);
+            break;
+        }
+        sprintf(msg, "Wheel %d: Sleeping\n", wheel->id);
+        log_print(log, msg);
         nanosleep(&ts,NULL); // Sleep for 1 Sec before continuing.
     }
+    sprintf(msg, "Wheel %d: Exiting\n", wheel->id);
+    log_print(log, msg);
     pthread_exit(NULL);
     return NULL;
 }
 
+void waitForContinueSignal(wheel_t *wheel, scenario_t *scenario) {
+    shared_buffer_t *log = &scenario->log;
+    char msg[255];
+    while (scenario->state == PROBLEM) {
+        sprintf(msg, "Wheel %d: Waiting for problems to be solved...\n", wheel->id);
+        log_print(log, msg);
+        pthread_cond_wait(&scenario->continue_condition, &scenario->mutex);
+    }
+}
+
+int processWheelState(wheel_t *wheel, scenario_t *scenario) {
+    shared_buffer_t *log = &scenario->log;
+    char msg[255];
+    switch(wheel->state) {
+        case WORKING:
+            sprintf(msg, "Wheel %d: Vectoring...\n", wheel->id);
+            log_print(log, msg);
+            return 0;
+        case SINKING:
+            sprintf(msg, "Wheel %d: Sinking...\n", wheel->id);
+            log_print(log, msg);
+            scenario->currentCycleProblems +=1;
+            scenario->state = PROBLEM;
+            pthread_cond_signal(&scenario->conditions.sinking_condition);
+            return 1;
+        case BLOCKED:
+            sprintf(msg, "Wheel %d: Blocked...\n", wheel->id);
+            log_print(log, msg);
+            scenario->currentCycleProblems += 1;
+            scenario->state = PROBLEM;
+            pthread_cond_signal(&scenario->conditions.blocked_condition);
+            return 2;
+            break;
+        case FREEWHEELING:
+            sprintf(msg, "Wheel %d: FreeWheeling...\n", wheel->id);
+            log_print(log, msg);
+            scenario->currentCycleProblems +=1;
+            scenario->state = PROBLEM;
+            pthread_cond_signal(&scenario->conditions.freeWheeling_condition);
+            return 3;
+    }
+}
+
 void *sinkProblemHandler(void *args) {
     scenario_t *scenario = (scenario_t *) args;
-    while (scenario->state != TERMINATE) {
+    pthread_mutex_t *mutex = &scenario->mutex;
+    while (scenario->state != COMPLETE) {
         pthread_mutex_lock(&scenario->mutex);
         if (isScenarioComplete(scenario) == 1) {
-            pthread_mutex_unlock(&scenario->mutex);
-            pthread_exit(NULL);
+            printf("BlockHandler: Exiting\n");
+            pthread_mutex_unlock(mutex);
+            break;
         }
         if (scenario->state == SETUP) {
             pthread_mutex_unlock(&scenario->mutex);
@@ -412,43 +459,19 @@ void *sinkProblemHandler(void *args) {
             }
         }
 
-        log_print(&scenario->log, "SinkHandler: Signal Received, searching for problem\n");
-        int problems = 0;
-        int attempts = 0;
-        wheel_t *p;
-        p = &scenario->wheels[0];
-        // Deal with the first Sink problem
-        for (int i =0; i < NUM_WHEELS; i ++) {
-            if (p->state == SINKING) {
-                attempts = 0;
-                problems++;
-                char msg[255];
-                sprintf(msg, "SinkHandler: Resolving problem for wheel %d\n", p->id);
-                log_print(&scenario->log, msg);
-
-                // Solve the problem
-                // Attempt to solve problem 3 times
-                while ((p->state != WORKING && attempts < 4)) {
-                    int outcome = rand() % 100;
-                    if (outcome < 60) {
-                        p->state = WORKING;
-                    }
-                    attempts++;
-                }
-                if (p->state != WORKING) {
-                    log_print(&scenario->log, "Failed to solve problem after 3 attempts\n");
-                    log_print(&scenario->log, "Terminating Scenario...\n");
-                }
-                problems--;
+        log_print(&scenario->log, "SinkHandler: Signal Received...\n");
+        for (int i = 0; i < NUM_WHEELS; i++) {
+            int result = trySolveProblem(scenario, &scenario->wheels[i], SINKING);
+            if (result == 1) {
+                log_print(&scenario->log, "Terminating Scenario...\n");
+                printf("FreeHandler: Exiting\n");
+                scenario->outcome = FAILED;
                 break;
             }
-            p++;
         }
-        if (x == 0)
-            scenario->state = VECTORING;
-
-        log_print(&scenario->log, "Sinkhandler: signaling & releasing lock...\n");
-        pthread_cond_broadcast(&scenario->vector_condition);
+        scenario->state = scenario->outcome == FAILED ? COMPLETE: VECTORING;
+        log_print(&scenario->log, "SinkHandler: signaling & releasing lock...\n");
+        pthread_cond_broadcast(&scenario->continue_condition);
         pthread_mutex_unlock(&scenario->mutex);
 
     }
@@ -457,9 +480,10 @@ void *sinkProblemHandler(void *args) {
 
 void *blockProblemHandler(void *args) {
     scenario_t *scenario = (scenario_t *) args;
-    while (scenario->state != TERMINATE) {
+    while (scenario->state != COMPLETE) {
         pthread_mutex_lock(&scenario->mutex);
         if (isScenarioComplete(scenario) == 1) {
+            printf("BlockHandler: Exiting\n");
             pthread_mutex_unlock(&scenario->mutex);
             pthread_exit(NULL);
         }
@@ -473,32 +497,24 @@ void *blockProblemHandler(void *args) {
         while(scenario->state != PROBLEM) {
             pthread_cond_wait(&scenario->conditions.blocked_condition, &scenario->mutex);
             if (scenario->state == COMPLETE) {
+                printf("FreeHandler: Exiting\n");
                 pthread_mutex_unlock(&scenario->mutex);
                 pthread_exit(NULL);
             }
         }
         log_print(&scenario->log, "BlockHandler: Signal Received, searching for problem\n");
-        int x = 0;
-        wheel_t *p;
-        p = &scenario->wheels[0];
-        // Deal with the first Sink problem
-        for (int i =0; i < NUM_WHEELS; i ++) {
-            if (p->state == BLOCKED) {
-                x++;
-                char msg[255];
-                sprintf(msg, "BlockHandler: Resolving problem for wheel %d\n", p->id);
-                log_print(&scenario->log, msg);
-                // Solve the problem
-                p->state = WORKING;
-                x--;
+        for (int i = 0; i < NUM_WHEELS; i++) {
+            int result = trySolveProblem(scenario, &scenario->wheels[i], BLOCKED);
+            if (result == 1) {
+                log_print(&scenario->log, "Terminating Scenario...\n");
+                scenario->state = COMPLETE;
+                scenario->outcome = FAILED;
                 break;
             }
-            p++;
         }
-        if (x == 0)
-            scenario->state = VECTORING;
+        scenario->state = scenario->outcome == FAILED ? COMPLETE: VECTORING;
         log_print(&scenario->log, "BlockHandler: signaling & releasing lock...\n");
-        pthread_cond_broadcast(&scenario->vector_condition);
+        pthread_cond_broadcast(&scenario->continue_condition);
         pthread_mutex_unlock(&scenario->mutex);
 
     }
@@ -507,9 +523,10 @@ void *blockProblemHandler(void *args) {
 
 void *freeWheelProblemHandler(void * args) {
     scenario_t *scenario = (scenario_t *) args;
-    while (scenario->state != TERMINATE) {
+    while (scenario->state != COMPLETE) {
         pthread_mutex_lock(&scenario->mutex);
         if (isScenarioComplete(scenario) == 1) {
+            printf("FreeHandler: Exiting\n");
             pthread_mutex_unlock(&scenario->mutex);
             pthread_exit(NULL);
         }
@@ -520,49 +537,84 @@ void *freeWheelProblemHandler(void * args) {
         }
 
         log_print(&scenario->log, "Freehandler: waiting for signal...\n");
-        while(scenario->state != PROBLEM && scenario->state != COMPLETE && scenario->state != TERMINATE) {
+        while(scenario->state != PROBLEM) {
             pthread_cond_wait(&scenario->conditions.freeWheeling_condition, &scenario->mutex);
             if (scenario->state == COMPLETE) {
+                printf("FreeHandler: Exiting\n");
                 pthread_mutex_unlock(&scenario->mutex);
                 pthread_exit(NULL);
             }
         }
-
-        if (scenario->state == COMPLETE && scenario->state == TERMINATE) {
-            continue;
-        }
         log_print(&scenario->log, "FreeHandler: Signal Received, searching for problem\n");
-        int x = 0;
-        wheel_t *p;
-        p = &scenario->wheels[0];
-        // Deal with the first problem
-        for (int i =0; i < NUM_WHEELS; i ++) {
-            if (p->state == FREEWHEELING) {
-                x++;
-                char msg[255];
-                sprintf(msg, "FreeHandler: Resolving problem for wheel %d\n", p->id);
-                log_print(&scenario->log, msg);
-                // Solve the problem
-                p->state = WORKING;
-                x--;
+        for (int i = 0; i < NUM_WHEELS; i++) {
+            int result = trySolveProblem(scenario, &scenario->wheels[i], FREEWHEELING);
+            if (result == 1) {
+                log_print(&scenario->log, "Terminating Scenario...\n");
+                scenario->state = COMPLETE;
+                scenario->outcome = FAILED;
                 break;
             }
-            p++;
         }
-        if (x == 0)
-            scenario->state = VECTORING;
-
+        scenario->state = scenario->outcome == FAILED ? COMPLETE: VECTORING;
         log_print(&scenario->log, "Freehandler: signaling & releasing lock...\n");
-        pthread_cond_broadcast(&scenario->vector_condition);
+        pthread_cond_broadcast(&scenario->continue_condition);
         pthread_mutex_unlock(&scenario->mutex);
 
     }
     pthread_exit(NULL);
 }
 
+int trySolveProblem(scenario_t *scenario, wheel_t * wheel, wheel_state pType) {
+    shared_buffer_t *log = &scenario->log;
+    int attempts = 0;
+    char msg[255];
+    char *logName = getLogNameForProblemType(pType);
+    int rando_calrissian;
+    if (wheel->state == pType) {
+        sprintf(msg, "%s: Resolving problem for wheel %d\n", logName, wheel->id);
+        log_print(&scenario->log, msg);
+        while(wheel->state != WORKING && attempts < PROBLEM_RETRY_ATTEMPTS) {
+            rando_calrissian = rand() % 100;
+            if (rando_calrissian >= FAILURE_PROBABILITY) {
+                wheel->state = WORKING;
+                sprintf(msg, "%s: Problem Solved\n", logName);
+                log_print(log, msg);
+                return 0;
+            }
+            else {
+                sprintf(msg, "%s: Failed to solved problem, attempt: %d\n", logName, attempts + 1);
+                log_print(&scenario->log, msg);
+                attempts++;
+            }
+        }
+
+        // Failed to solve problem 3 times.
+        sprintf(msg, "%s: Failed to solve problem after 3 Attempts...\n", logName);
+        log_print(log, msg);
+        return 1;
+    }
+    return 0;
+}
+
+char *getLogNameForProblemType(wheel_state pType) {
+    static char name[20];
+    switch (pType) {
+        case SINKING:
+            strcpy(name, "SinkHandler");
+            break;
+        case FREEWHEELING:
+            strcpy(name, "FreeHandler");
+            break;
+        case BLOCKED:
+            strcpy(name, "BlockHandler");
+            break;
+    }
+    return name;
+}
+
 int isScenarioComplete(scenario_t *scenario) {
     if (scenario->solvedProblemCount == MIN_PROBLEMS_PER_SCENARIO
-        || scenario->totalDistanceVectored >= MIN_VECTOR_DISTANCE || scenario->state == TERMINATE || scenario->state == COMPLETE) {
+        || scenario->totalDistanceVectored >= MIN_VECTOR_DISTANCE || scenario->state == COMPLETE) {
         return 1;
     }
     return 0;
@@ -636,114 +688,138 @@ wheel_state randomizeSingleState(wheel_state secondaryState) {
         return secondaryState;
 }
 
-void *vectorMonitor(void * args) {
-    scenario_t *scenario = (scenario_t *)args;
+/*
+ * Function: scenarioMonitor
+ * --------------------------
+ * Checks the Scenario state after each wheel cycle,
+ * It increments the total Distance Vectored each Iteration.
+ * Responsible for Signalling that the scenario has completed.
+ *
+ * p_scenario: Pointer to a scenario struct.
+ *
+ * returns: NULL
+ * pthread_exit status: 0
+ * */
+void *scenarioMonitor(void *p_scenario) {
+    scenario_t *scenario = (scenario_t *)p_scenario;
+    pthread_mutex_t *mutex = &scenario->mutex;
+    shared_buffer_t *log = &scenario->log;
     char msg[255];
-    while(scenario->state != TERMINATE && scenario->state != COMPLETE) {
+    while(1) {
+        sprintf(msg, "SMon: Waiting at barrier\n");
+        log_print(log, msg);
         pthread_barrier_wait(&scenario->wheelCycle_barrier);
-        pthread_mutex_lock(&scenario->mutex);
+        pthread_mutex_lock(mutex);
+        sprintf(msg, "TOTAL DISTANCE VECTORED: %f\n", scenario->totalDistanceVectored);
+        log_print(log, "==========================\n");
+        log_print(log, msg);
+        log_print(log, "==========================\n");
         scenario->totalDistanceVectored += 0.1;
         scenario->currentCycleProblems = 0;
         scenario->multiReset = 0;
-        sprintf(msg, "TOTAL DISTANCE VECTORED: %f\n", scenario->totalDistanceVectored);
-        log_print(&scenario->log, msg);
-        log_print(&scenario->log, "=============================\n");
         if (isScenarioComplete(scenario) == 1) {
-            log_print(&scenario->log, "SCENARIO COMPLETE\n");
-            scenario->state = COMPLETE;
-            pthread_cond_signal(&scenario->scenarioComplete_condition);
+            if (scenario->state != COMPLETE) {
+                scenario->state = COMPLETE;
+            }
+            if (scenario->outcome != FAILED) {
+                scenario->outcome = PASSED;
+            }
+            pthread_cond_broadcast(&scenario->scenarioComplete_condition);
+            pthread_mutex_unlock(mutex);
+            break;
         }
-        pthread_mutex_unlock(&scenario->mutex);
+        pthread_mutex_unlock(mutex);
     }
-    pthread_exit(NULL);
+    sprintf(msg, "SMon: Exiting\n");
+    pthread_exit(0);
 }
 
-log_queue_t log_init(scenario_type scType) {
-    log_queue_t log;
-
-    // Init pthread vars
-    pthread_mutex_init(&log.lock, NULL);
-    pthread_cond_init(&log.read_cond, NULL);
-    pthread_cond_init(&log.write_cond, NULL);
-
-    // Erase buffer memory
-    memset(log.data, '\0', sizeof(log.data));
+shared_buffer_t log_init(scenario_type scType) {
+    shared_buffer_t sb;
+    sb.next_in = sb.next_out = sb.count = 0;
+    sb.close = 0;
+    pthread_mutex_init(&sb.lock, NULL);
+    pthread_cond_init(&sb.new_data_cond, NULL);
+    pthread_cond_init(&sb.new_space_cond, NULL);
 
     // Gen FileName for scenario
-    log.fileName = generateFileName(scType);
+    sb.fileName = generateFileName(scType);
 
-    log.tail = 0;
-    log.head =0;
-    log.size = 10;
-
-    return log;
+    return sb;
 }
 
 // Prints string, adds it to the log_queue
-void log_print(log_queue_t *log, char string[]) {
-    printf("%s", string);
-    pthread_mutex_lock(&log->lock);
-    // Wait for available buffer space
-    while ((log->head + 1 % log->size) == log->tail) {
-        pthread_cond_wait(&log->write_cond, &log->lock);
-    }
+//void log_print(log_queue_t *log, char string[]) {
+//    printf("%s", string);
+//    pthread_mutex_lock(&log->lock);
+//
+//    // Wait for available buffer space
+//    while (log->head == log->tail) {
+//        printf("log_print: Waiting for write_cond\n");
+//        printf("log_print: head: %d, tail: %d \n", log->head, log->tail);
+//        pthread_cond_wait(&log->write_cond, &log->lock);
+//        printf("log_print: Writing\n");
+//    }
+//
+//    strcpy(log->data[log->head], string);
+//    pthread_cond_signal(&log->read_cond);
+//
+//    // Increase head position, wrap if needed.
+//
+//    log->head = log->head + 1 == log->size ? 0 : log->head + 1;
+//    pthread_mutex_unlock(&log->lock);
+//
+//}
 
-    strcpy(log->data[log->head], string);
-    pthread_cond_signal(&log->read_cond);
-
-    // Increase head position, wrap if needed.
-    log->head = log->head == log->size - 1 ? 0 : log->head + 1;
-    pthread_mutex_unlock(&log->lock);
-
-}
-
-void *log_consume(void *args) {
-    scenario_t *scenario = (scenario_t *)args;
-    log_queue_t *log = &scenario->log;
-    FILE *fp;
-    fp = fopen(scenario->log.fileName,"a");
-    if (fp == NULL) {
-        perror( "Error opening file" );
-        printf( "Error code opening file: %d\n", errno );
-        printf( "Error opening file: %s\n", strerror( errno ) );
-        exit(-1);
-    }
-    for (;;) {
-        pthread_mutex_lock(&log->lock);
-        if (scenario->state == COMPLETE && log->tail == log->head) {
-            fclose(fp);
-            pthread_exit(NULL);
-        }
-        // Wait if buffer empty
-        while (log->tail == log->head) {
-            if (scenario->state == SETUP) {
-                pthread_mutex_unlock(&log->lock);
-                pthread_barrier_wait(&scenario->solutionSetup_barrier);
-                pthread_mutex_lock(&log->lock);
-            }
-            pthread_cond_wait(&log->read_cond, &log->lock);
-        }
-
-        if (scenario->state == COMPLETE && log->tail == log->head) {
-            fclose(fp);
-            pthread_exit(NULL);
-        }
-        // Write next string to file.
-        fprintf(fp, "%s", log->data[log->tail]);
-
-        //  Reset value
-        memset(log->data[log->tail], '\0', sizeof(log->data[log->tail]));
-
-        // Increment tail position, wrap if needed
-        if (log->tail + 1 == log->size) {
-            log->tail = 0;
-        }
-        else log->tail++;
-        // log->tail = log->tail + 1 == log->size ? 0 : log->tail + 1;
-        pthread_cond_broadcast(&log->write_cond);
-        pthread_mutex_unlock(&log->lock);
-    }
-}
+//void *log_consume(void *args) {
+//    scenario_t *scenario = (scenario_t *)args;
+//    log_queue_t *log = &scenario->log;
+//    FILE *fp;
+//    fp = fopen(scenario->log.fileName,"a");
+//    if (fp == NULL) {
+//        perror( "Error opening file" );
+//        printf( "Error code opening file: %d\n", errno );
+//        printf( "Error opening file: %s\n", strerror( errno ) );
+//        exit(-1);
+//    }
+//    for (;;) {
+//        printf("Logger: Locking\n");
+//        pthread_mutex_lock(&log->lock);
+//        if (log->close == 1 && log->tail == log->head) {
+//            printf("Logger: Closing\n");
+//            fclose(fp);
+//            pthread_exit(NULL);
+//        }
+//        // Wait if buffer empty
+//        while (log->tail == log->head) {
+//            if (scenario->state == SETUP) {
+//                pthread_mutex_unlock(&log->lock);
+//                pthread_barrier_wait(&scenario->solutionSetup_barrier);
+//                pthread_mutex_lock(&log->lock);
+//            }
+//            printf("Logger: Waiting for Read Conditions\n");
+//            pthread_cond_wait(&log->read_cond, &log->lock);
+//        }
+//
+//        if (log->close == 1 && log->tail == log->head) {
+//            printf("Logger: Closing\n");
+//            fclose(fp);
+//            pthread_exit(NULL);
+//        }
+//        // Write next string to file.
+//        printf("logger: writing: %s", log->data[log->tail]);
+//        fprintf(fp, "%s", log->data[log->tail]);
+//
+//        //  Reset value
+//        memset(log->data[log->tail], '\0', sizeof(log->data[log->tail]));
+//
+//        // Increment tail position, wrap if needed
+//        log->tail = log->tail + 1 == log->size ? 0 : log->tail + 1;
+//        pthread_cond_broadcast(&log->write_cond);
+//        printf("Logger: Unlocking\n");
+//        pthread_mutex_unlock(&log->lock);
+//    }
+//}
 
 void log_destroy(log_queue_t *log) {
     pthread_mutex_destroy(&log->lock);
@@ -751,6 +827,7 @@ void log_destroy(log_queue_t *log) {
     pthread_cond_destroy(&log->write_cond);
     return;
 }
+
 char * generateFileName(scenario_type scType) {
     static char fn[30];
     int prefLen =0;
@@ -785,4 +862,56 @@ char * generateFileName(scenario_type scType) {
     memcpy(fn + prefLen, timeText, 16);
     memcpy(fn + prefLen + 16, ".txt", 4);
     return fn;
+}
+
+/* producer is intended to be the body of a thread.
+   It repeatedly reads the next line of text from the standard input,
+   and puts it into the buffer pointed to by the parameter sb.
+   It terminates when it encounters an EOF character in input.
+   The EOF character is passed on to the consumer.
+ */
+void *log_print(shared_buffer_t *sb, char string[]) {
+    printf("%s", string);
+    pthread_mutex_lock(&sb->lock);
+    // Wait for space
+    while (sb->count == BUFF_H)
+        pthread_cond_wait(&sb->new_space_cond, &sb->lock);
+
+    // Copy string in buffer
+    strcpy(sb->c[sb->next_in], string);
+    sb->count++;
+    sb->next_in = (sb->next_in + 1) % BUFF_H;
+    pthread_mutex_unlock(&sb->lock);
+    pthread_cond_signal(&sb->new_data_cond);
+    return NULL;
+}
+
+void *log_consume(void *args) {
+    shared_buffer_t *sb = (shared_buffer_t *)args;
+    FILE *fp;
+    fp = fopen(sb->fileName,"a");
+    if (fp == NULL) {
+        perror( "Error opening file" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+    for (;;) {
+        pthread_mutex_lock(&sb->lock);
+        while(sb->count == 0)
+            pthread_cond_wait(&sb->new_data_cond, &sb->lock);
+
+        if (sb->close == 1) {
+            fclose(fp);
+            pthread_exit(NULL);
+        }
+        pthread_mutex_unlock(&sb->lock);
+        fprintf(fp, "%s", sb->c[sb->next_out]);
+        memset(sb->c[sb->next_out], '\0', sizeof(sb->c[sb->next_out]));
+        pthread_mutex_lock(&sb->lock);
+        sb->next_out = (sb->next_out + 1) % BUFF_H;
+        sb->count--;
+        pthread_mutex_unlock(&sb->lock);
+        pthread_cond_signal(&sb->new_space_cond);
+    }
 }
