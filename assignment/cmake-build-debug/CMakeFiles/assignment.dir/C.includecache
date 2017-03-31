@@ -6,15 +6,15 @@
 
 #IncludeRegexTransform: 
 
-/home/rob/370/assignment/p.c
+/home/rob/370/assignment/main.c
 stdio.h
 -
 pthread.h
 -
 stdlib.h
 -
-time.h
--
 string.h
+-
+errno.h
 -
 

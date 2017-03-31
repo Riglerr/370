@@ -84,7 +84,7 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="/home/rob/370/assignment/p.c">
+		<Unit filename="/home/rob/370/assignment/main.c">
 			<Option target="assignment"/>
 		</Unit>
 		<Unit filename="/home/rob/370/assignment/CMakeLists.txt">

@@ -123,32 +123,32 @@ assignment/fast:
 	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/build
 .PHONY : assignment/fast
 
-p.o: p.c.o
+main.o: main.c.o
 
-.PHONY : p.o
+.PHONY : main.o
 
 # target to build an object file
-p.c.o:
-	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/p.c.o
-.PHONY : p.c.o
+main.c.o:
+	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/main.c.o
+.PHONY : main.c.o
 
-p.i: p.c.i
+main.i: main.c.i
 
-.PHONY : p.i
+.PHONY : main.i
 
 # target to preprocess a source file
-p.c.i:
-	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/p.c.i
-.PHONY : p.c.i
+main.c.i:
+	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/main.c.i
+.PHONY : main.c.i
 
-p.s: p.c.s
+main.s: main.c.s
 
-.PHONY : p.s
+.PHONY : main.s
 
 # target to generate assembly for a file
-p.c.s:
-	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/p.c.s
-.PHONY : p.c.s
+main.c.s:
+	$(MAKE) -f CMakeFiles/assignment.dir/build.make CMakeFiles/assignment.dir/main.c.s
+.PHONY : main.c.s
 
 # Help Target
 help:
@@ -159,9 +159,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... assignment"
-	@echo "... p.o"
-	@echo "... p.i"
-	@echo "... p.s"
+	@echo "... main.o"
+	@echo "... main.i"
+	@echo "... main.s"
 .PHONY : help
 
 
